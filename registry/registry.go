@@ -8,8 +8,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"time"
-
+	"encoding/json"
 	"rsc.io/letsencrypt"
 
 	logstash "github.com/bshuster-repo/logrus-logstash-hook"
@@ -90,6 +91,7 @@ func NewRegistry(ctx context.Context, config *configuration.Configuration) (*Reg
 	app.RegisterHealthChecks()
 	handler := configureReporting(app)
 	handler = alive("/", handler)
+	handler = clean(handler)
 	handler = health.Handler(handler)
 	handler = panicHandler(handler)
 	if !config.Log.AccessLog.Disabled {
@@ -312,6 +314,34 @@ func alive(path string, handler http.Handler) http.Handler {
 		if r.URL.Path == path {
 			w.Header().Set("Cache-Control", "no-cache")
 			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		handler.ServeHTTP(w, r)
+	})
+}
+
+type ResponseContent struct {
+  Message    	string
+  Status 			int
+}
+// Clean the registry returns an http 200
+func clean(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/clean" {
+			out, _ := exec.Command("sh", "-c", "/bin/registry garbage-collect /etc/docker/registry/config.yml").Output()
+			fmt.Printf("%s\n\n",out)
+			response := ResponseContent{"The registry has been cleaned", 200}
+		 	js, err := json.Marshal(response)
+		  if err != nil {
+		    http.Error(w, err.Error(), http.StatusInternalServerError)
+		    return
+		  }
+
+			w.Header().Set("Cache-Control", "no-cache")
+		  w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+		  w.Write(js)
 			return
 		}
 

@@ -79,12 +79,19 @@ test-full:
 	@echo "+ $@"
 	@go test -tags "${DOCKER_BUILDTAGS}" $(PKGS)
 
+registry: ${PREFIX}/bin/registry
+	@echo "+ $@"
+
 binaries: ${PREFIX}/bin/registry ${PREFIX}/bin/digest ${PREFIX}/bin/registry-api-descriptor-template
 	@echo "+ $@"
 
 clean:
 	@echo "+ $@"
 	@rm -rf "${PREFIX}/bin/registry" "${PREFIX}/bin/digest" "${PREFIX}/bin/registry-api-descriptor-template"
+
+clean-registry:
+	@echo "+ $@"
+	@rm -rf "${PREFIX}/bin/registry"
 
 dep-validate:
 	@echo "+ $@"

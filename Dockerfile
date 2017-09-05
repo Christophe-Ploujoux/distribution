@@ -11,9 +11,20 @@ RUN set -ex \
 
 WORKDIR $DISTRIBUTION_DIR
 COPY . $DISTRIBUTION_DIR
-COPY cmd/registry/config-dev.yml /etc/docker/registry/config.yml
+COPY certs /certs
 
-RUN make PREFIX=/go clean binaries
+RUN make PREFIX=/go clean-registry registry
+
+
+FROM golang:1.8-alpine
+
+ENV REGISTRY_STORAGE_DELETE_ENABLED true
+
+ARG GOOS=linux
+ARG GOARCH=amd64
+
+COPY --from=0 /go/bin /go/bin
+COPY cmd/registry/config.yml /etc/docker/registry/config.yml
 
 VOLUME ["/var/lib/registry"]
 EXPOSE 5000
